@@ -1,0 +1,37 @@
+# BachatBuddy PostgreSQL configuration.
+# Prefer DATABASE_URL when set (Docker Compose / CI). Otherwise use local defaults.
+
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  <% if ENV["DATABASE_URL"].present? %>
+  url: <%= ENV["DATABASE_URL"] %>
+  <% else %>
+  host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
+  port: <%= ENV.fetch("POSTGRES_PORT", 5432) %>
+  username: <%= ENV.fetch("POSTGRES_USER", "bachatbuddy") %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", "bachatbuddy") %>
+  <% end %>
+
+development:
+  <<: *default
+  <% unless ENV["DATABASE_URL"].present? %>
+  database: <%= ENV.fetch("POSTGRES_DB", "bachatbuddy_development") %>
+  <% end %>
+
+test:
+  <<: *default
+  <% if ENV["DATABASE_URL"].present? %>
+  url: <%= ENV.fetch("DATABASE_URL").sub(/\/[^\/?]+(\?|$)/, "/bachatbuddy_test\\1") %>
+  <% else %>
+  database: bachatbuddy_test
+  <% end %>
+
+production:
+  <<: *default
+  <% unless ENV["DATABASE_URL"].present? %>
+  database: bachatbuddy_production
+  username: <%= ENV.fetch("POSTGRES_USER", "bachatbuddy") %>
+  password: <%= ENV["POSTGRES_PASSWORD"] %>
+  <% end %>

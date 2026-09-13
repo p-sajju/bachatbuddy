@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: bachatbuddy
+      POSTGRES_PASSWORD: bachatbuddy
+      POSTGRES_DB: bachatbuddy_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bachatbuddy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["full"]
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://bachatbuddy:bachatbuddy@postgres:5432/bachatbuddy_development
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: local-dev-jwt-secret-change-me
+      CORS_ORIGINS: http://localhost:3001
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: bash -c "bundle exec rails db:prepare && bundle exec rails s -b 0.0.0.0 -p 3000"
+
+  sidekiq:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["full"]
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://bachatbuddy:bachatbuddy@postgres:5432/bachatbuddy_development
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: local-dev-jwt-secret-change-me
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: bundle exec sidekiq
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    profiles: ["full"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

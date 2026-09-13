@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Manage BachatBuddy project-local PostgreSQL 18 on port 5432.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DATA_DIR="${BB_PGDATA:-$ROOT/.pgdata}"
+PG_BIN="${BB_PG_BIN:-/usr/lib/postgresql/18/bin}"
+PORT="${BB_PG_PORT:-5432}"
+USER_NAME="${POSTGRES_USER:-bachatbuddy}"
+
+if [[ ! -x "$PG_BIN/pg_ctl" ]]; then
+  echo "PostgreSQL 18 binaries not found at $PG_BIN" >&2
+  echo "Install: sudo apt install postgresql-18 postgresql-client-18" >&2
+  exit 1
+fi
+
+"$PG_BIN/postgres" -V
+
+cmd="${1:-status}"
+
+case "$cmd" in
+  init)
+    if [[ -d "$DATA_DIR" && -f "$DATA_DIR/PG_VERSION" ]]; then
+      echo "Data directory already initialized: $DATA_DIR (PG $(cat "$DATA_DIR/PG_VERSION"))"
+      exit 0
+    fi
+    mkdir -p "$DATA_DIR"
+    "$PG_BIN/initdb" -D "$DATA_DIR" --auth=trust --username="$USER_NAME" --encoding=UTF8 --locale=C.UTF-8
+    echo "Initialized PostgreSQL 18 data dir at $DATA_DIR"
+    ;;
+  start)
+    if [[ ! -f "$DATA_DIR/PG_VERSION" ]]; then
+      echo "Missing data dir. Run: $0 init" >&2
+      exit 1
+    fi
+    ver="$(cat "$DATA_DIR/PG_VERSION")"
+    if [[ "$ver" != "18" ]]; then
+      echo "Refusing to start: data dir is PG $ver, expected 18. Re-init or migrate." >&2
+      exit 1
+    fi
+    if "$PG_BIN/pg_ctl" -D "$DATA_DIR" status >/dev/null 2>&1; then
+      echo "Already running on port $PORT"
+    else
+      "$PG_BIN/pg_ctl" -D "$DATA_DIR" -o "-p $PORT -k $DATA_DIR" -l "$DATA_DIR/logfile" start
+      echo "Started PostgreSQL 18 on port $PORT"
+    fi
+    # Ensure DBs exist
+    for db in bachatbuddy_development bachatbuddy_test; do
+      if ! "$PG_BIN/psql" -h 127.0.0.1 -p "$PORT" -U "$USER_NAME" -d postgres -Atqc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
+        "$PG_BIN/createdb" -h 127.0.0.1 -p "$PORT" -U "$USER_NAME" "$db"
+        echo "Created database $db"
+      fi
+    done
+    "$PG_BIN/psql" -h 127.0.0.1 -p "$PORT" -U "$USER_NAME" -d bachatbuddy_development -c "SHOW server_version;"
+    ;;
+  stop)
+    "$PG_BIN/pg_ctl" -D "$DATA_DIR" stop || true
+    ;;
+  status)
+    "$PG_BIN/pg_ctl" -D "$DATA_DIR" status || true
+    "$PG_BIN/psql" -h 127.0.0.1 -p "$PORT" -U "$USER_NAME" -d bachatbuddy_development -c "SHOW server_version;" 2>/dev/null || echo "Not accepting connections on $PORT"
+    ;;
+  *)
+    echo "Usage: $0 {init|start|stop|status}"
+    exit 1
+    ;;
+esac

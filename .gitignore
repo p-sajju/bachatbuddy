@@ -1,0 +1,66 @@
+# Dependencies / build
+backend/vendor/bundle
+backend/tmp/
+backend/log/
+backend/storage/
+backend/.bundle/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+*.gem
+*.rbc
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+frontend/.env*.local
+
+# Rails / Ruby
+backend/config/master.key
+backend/config/*.key
+backend/public/assets/
+backend/public/packs/
+backend/public/packs-test/
+backend/node_modules/
+backend/coverage/
+backend/spec/examples.txt
+.ruby-gemset
+.rvmrc
+.byebug_history
+
+# Node / Next
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Coverage / test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Project-local Postgres data
+.pgdata/
+.pgdata-user/
+
+# Docker / misc
+*.log
+.cache/
+.turbo/

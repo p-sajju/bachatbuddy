@@ -1,0 +1,13 @@
+:concurrency: 5
+:queues:
+  - default
+  - mailers
+:schedule:
+  materialize_recurring_expenses:
+    cron: "15 0 * * *"
+    class: MaterializeRecurringExpensesJob
+    description: "Materialize due recurring expenses (Asia/Kolkata midnight-ish)"
+  notification_scan:
+    cron: "0 */6 * * *"
+    class: NotificationScanJob
+    description: "Scan and generate in-app notifications"
