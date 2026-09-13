@@ -13,9 +13,14 @@ export type ApiEnvelope<T> = {
 export type User = {
   id: string;
   email: string;
+  first_name?: string | null;
+  last_name?: string | null;
   name: string | null;
+  phone_number?: string | null;
   timezone: string;
   onboarding_completed?: boolean;
+  avatar_url?: string | null;
+  initials?: string | null;
   created_at?: string;
 };
 

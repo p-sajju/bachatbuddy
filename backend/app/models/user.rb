@@ -3,8 +3,10 @@
 class User < ApplicationRecord
   MAX_FAILED_LOGINS = 5
   LOCKOUT_DURATION = 30.minutes
+  PHONE_FORMAT = /\A\+?[0-9]{10,15}\z/
 
   has_secure_password
+  has_one_attached :avatar
 
   has_many :refresh_tokens, dependent: :destroy
   has_many :categories, dependent: :destroy
@@ -21,9 +23,15 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :idempotency_keys, dependent: :destroy
 
+  before_validation :normalize_phone_number
+  before_validation :sync_full_name
+
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :first_name, :last_name, presence: true
   validates :name, presence: true
+  validates :phone_number, presence: true,
+                           format: { with: PHONE_FORMAT, message: "must be 10–15 digits (optional leading +)" }
   validates :timezone, presence: true
   validates :password, length: { minimum: 8 }, if: -> { password.present? }
 
@@ -44,10 +52,43 @@ class User < ApplicationRecord
     {
       id: id,
       email: email,
+      first_name: first_name,
+      last_name: last_name,
       name: name,
+      phone_number: phone_number,
       timezone: timezone,
       settings: settings,
-      onboarding_completed: ActiveModel::Type::Boolean.new.cast(settings["onboarding_completed"]) == true
+      onboarding_completed: ActiveModel::Type::Boolean.new.cast(settings["onboarding_completed"]) == true,
+      avatar_url: avatar_url,
+      initials: initials
     }
+  end
+
+  def avatar_url
+    return nil unless avatar.attached?
+
+    Rails.application.routes.url_helpers.rails_blob_url(avatar, only_path: false)
+  rescue StandardError
+    nil
+  end
+
+  def initials
+    [ first_name, last_name ].map { |p| p.to_s.strip[0] }.compact_blank.join.upcase.presence ||
+      email.to_s[0]&.upcase ||
+      "?"
+  end
+
+  private
+
+  def normalize_phone_number
+    return if phone_number.blank?
+
+    cleaned = phone_number.to_s.gsub(/[\s\-()]/, "")
+    self.phone_number = cleaned
+  end
+
+  def sync_full_name
+    parts = [ first_name, last_name ].map { |p| p.to_s.strip.presence }.compact
+    self.name = parts.join(" ") if parts.any?
   end
 end

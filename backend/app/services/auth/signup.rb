@@ -2,10 +2,12 @@
 
 module Auth
   class Signup
-    def initialize(email:, password:, name:, timezone: "Asia/Kolkata")
+    def initialize(email:, password:, first_name:, last_name:, phone_number:, timezone: "Asia/Kolkata")
       @email = email
       @password = password
-      @name = name
+      @first_name = first_name
+      @last_name = last_name
+      @phone_number = phone_number
       @timezone = timezone.presence || "Asia/Kolkata"
     end
 
@@ -15,7 +17,9 @@ module Auth
         user = User.create!(
           email: @email,
           password: @password,
-          name: @name,
+          first_name: @first_name,
+          last_name: @last_name,
+          phone_number: @phone_number,
           timezone: @timezone,
           settings: { "onboarding_completed" => false }
         )

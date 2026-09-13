@@ -16,6 +16,9 @@ module Api
 
       def update
         attrs = {}
+        attrs[:first_name] = params[:first_name] if params.key?(:first_name)
+        attrs[:last_name] = params[:last_name] if params.key?(:last_name)
+        attrs[:phone_number] = params[:phone_number] if params.key?(:phone_number)
         attrs[:name] = params[:name] if params.key?(:name)
         attrs[:timezone] = params[:timezone] if params.key?(:timezone)
         if params.key?(:settings)

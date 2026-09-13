@@ -14,6 +14,9 @@ Rails.application.routes.draw do
 
       get "me", to: "me#show"
       patch "me", to: "me#update"
+      put "me/avatar", to: "me#update_avatar"
+      post "me/avatar", to: "me#update_avatar"
+      delete "me/avatar", to: "me#destroy_avatar"
 
       resources :incomes
       resources :expenses

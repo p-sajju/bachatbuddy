@@ -3,7 +3,9 @@
 FactoryBot.define do
   factory :user do
     sequence(:email) { |n| "user#{n}@example.com" }
-    name { "Test User" }
+    first_name { "Test" }
+    last_name { "User" }
+    sequence(:phone_number) { |n| format("9%09d", n % 1_000_000_000) }
     password { "password123" }
     timezone { "Asia/Kolkata" }
 

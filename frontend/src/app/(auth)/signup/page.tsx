@@ -4,27 +4,45 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/PageHeader";
+import { PhoneField } from "@/components/PhoneField";
 import { Button, ErrorBanner, Field, Input, Surface } from "@/components/ui";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
+import {
+  DEFAULT_COUNTRY_CODE,
+  buildPhoneNumber,
+} from "@/lib/phone";
 import type { AuthPayload } from "@/lib/types";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [countryCode, setCountryCode] = useState<string>(DEFAULT_COUNTRY_CODE);
+  const [localPhone, setLocalPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    if (localPhone.length !== 10) {
+      setError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await apiPost<AuthPayload>(
         "/api/v1/auth/signup",
-        { email, password, name: name || undefined },
+        {
+          email,
+          password,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone_number: buildPhoneNumber(countryCode, localPhone),
+        },
         { auth: false },
       );
       setTokens({
@@ -55,14 +73,32 @@ export default function SignupPage() {
         </h1>
         <ErrorBanner message={error} />
         <form onSubmit={onSubmit} className="space-y-4">
-          <Field label="Name" hint="You can finish this in onboarding">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              autoComplete="name"
-            />
-          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="First name">
+              <Input
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Demo"
+                autoComplete="given-name"
+              />
+            </Field>
+            <Field label="Last name">
+              <Input
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="User"
+                autoComplete="family-name"
+              />
+            </Field>
+          </div>
+          <PhoneField
+            countryCode={countryCode}
+            localNumber={localPhone}
+            onCountryCodeChange={setCountryCode}
+            onLocalNumberChange={setLocalPhone}
+          />
           <Field label="Email">
             <Input
               type="email"
