@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/PageHeader";
+import { useEffect, useMemo, useState } from "react";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
   Disclaimer,
   EmptyState,
@@ -12,22 +12,40 @@ import {
 } from "@/components/ui";
 import { apiGet, ApiRequestError } from "@/lib/api";
 import { formatINR } from "@/lib/money";
-import type { DashboardSummary } from "@/lib/types";
+import type { DashboardSummary, User } from "@/lib/types";
 
 const STS_DISCLAIMER =
   "Safe to Spend is a planning figure based on income, expenses, locks, and goals — not your live bank balance.";
 
+function greetingForHour(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function HomePage() {
   const [data, setData] = useState<DashboardSummary | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const greetWord = useMemo(
+    () => greetingForHour(new Date().getHours()),
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiGet<DashboardSummary>("/api/v1/dashboard");
-        if (!cancelled) setData(res.data);
+        const [dash, me] = await Promise.all([
+          apiGet<DashboardSummary>("/api/v1/dashboard"),
+          apiGet<User>("/api/v1/me"),
+        ]);
+        if (!cancelled) {
+          setData(dash.data);
+          setUser(me.data);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -45,13 +63,31 @@ export default function HomePage() {
     };
   }, []);
 
+  const displayName =
+    user?.first_name?.trim() ||
+    user?.name?.trim()?.split(/\s+/)[0] ||
+    "there";
+
   return (
     <div>
-      <PageHeader
-        hero
-        title="Your money, protected"
-        subtitle="Calm overview for this month"
-      />
+      <header className="mb-5 flex items-start justify-between gap-3 pt-2">
+        <div className="min-w-0">
+          <p className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--bb-forest)] sm:text-4xl">
+            Hi {displayName}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--bb-muted)]">
+            {greetWord} — welcome back. Here&apos;s your money at a glance.
+          </p>
+        </div>
+        <ProfileAvatar
+          firstName={user?.first_name}
+          lastName={user?.last_name}
+          name={user?.name}
+          avatarUrl={user?.avatar_url}
+          initials={user?.initials}
+          size="md"
+        />
+      </header>
 
       {loading ? (
         <div className="flex justify-center py-16">

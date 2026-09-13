@@ -199,4 +199,51 @@ export const apiDelete = <T>(
   opts?: Omit<RequestOptions, "method" | "body">,
 ) => api<T>(path, { ...opts, method: "DELETE", idempotency: false });
 
+/** Multipart upload (e.g. profile photo). Do not set Content-Type — browser sets boundary. */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  method: "POST" | "PUT" | "PATCH" = "POST",
+): Promise<ApiEnvelope<T>> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  headers["Idempotency-Key"] = crypto.randomUUID();
+
+  const url = path.startsWith("http")
+    ? path
+    : `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+
+  let res = await fetch(url, { method, headers, body: formData });
+
+  if (res.status === 401 && getRefreshToken()) {
+    const ok = await ensureRefresh();
+    if (ok) {
+      const t = getAccessToken();
+      if (t) headers.Authorization = `Bearer ${t}`;
+      res = await fetch(url, { method, headers, body: formData });
+    }
+  }
+
+  const requestId = res.headers.get("X-Request-Id") || undefined;
+  const text = await res.text();
+  let json: ApiEnvelope<T> | null = null;
+  if (text) {
+    try {
+      json = JSON.parse(text) as ApiEnvelope<T>;
+    } catch {
+      throw new ApiRequestError("Invalid JSON response from API", res.status, [], requestId);
+    }
+  }
+
+  if (!res.ok) {
+    const errors = json?.errors || [
+      { code: "http_error", message: res.statusText || "Upload failed" },
+    ];
+    throw new ApiRequestError(errors[0]?.message || "Upload failed", res.status, errors, requestId);
+  }
+
+  return json || ({ data: null as T, meta: {}, errors: [] } as ApiEnvelope<T>);
+}
+
 export { API_BASE };

@@ -3,13 +3,12 @@
 module Api
   module V1
     class MeController < ApplicationController
-
       def show
         render_success(current_user.as_api_json)
       end
 
       def update
-        attrs = params.permit(:name, :timezone).to_h
+        attrs = params.permit(:first_name, :last_name, :phone_number, :name, :timezone).to_h
         settings = current_user.settings.deep_dup
 
         if params[:settings].present?
@@ -29,6 +28,25 @@ module Api
         end
 
         render_success(current_user.reload.as_api_json)
+      end
+
+      def update_avatar
+        file = params[:avatar] || params[:file]
+        unless file.present?
+          return render_error(code: "avatar_missing", message: "Please choose a profile photo.", status: :bad_request)
+        end
+
+        current_user.avatar.attach(file)
+        unless current_user.avatar.attached?
+          return render_error(code: "avatar_invalid", message: "Could not save profile photo.")
+        end
+
+        render_success(current_user.as_api_json)
+      end
+
+      def destroy_avatar
+        current_user.avatar.purge if current_user.avatar.attached?
+        render_success(current_user.as_api_json)
       end
 
       private

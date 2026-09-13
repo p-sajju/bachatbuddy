@@ -10,7 +10,9 @@ RSpec.describe "Auth", type: :request do
       payload = {
         email: "newuser@example.com",
         password: "password123",
-        name: "New User",
+        first_name: "New",
+        last_name: "User",
+        phone_number: "9876543210",
         timezone: "Asia/Kolkata"
       }.to_json
 
@@ -21,6 +23,10 @@ RSpec.describe "Auth", type: :request do
       expect(response).to have_http_status(:created)
       data = json_body["data"]
       expect(data["user"]["email"]).to eq("newuser@example.com")
+      expect(data["user"]["first_name"]).to eq("New")
+      expect(data["user"]["last_name"]).to eq("User")
+      expect(data["user"]["phone_number"]).to eq("9876543210")
+      expect(data["user"]["name"]).to eq("New User")
       expect(data["access_token"]).to be_present
       expect(data["refresh_token"]).to be_present
 
@@ -36,7 +42,13 @@ RSpec.describe "Auth", type: :request do
       create(:user, email: "taken@example.com")
 
       post "/api/v1/auth/signup",
-           params: { email: "taken@example.com", password: "password123", name: "Dup" }.to_json,
+           params: {
+             email: "taken@example.com",
+             password: "password123",
+             first_name: "Dup",
+             last_name: "User",
+             phone_number: "9123456780"
+           }.to_json,
            headers: json_headers
 
       expect(response).to have_http_status(:unprocessable_entity)

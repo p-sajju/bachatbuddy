@@ -10,11 +10,15 @@ module Api
         user = Auth::Signup.new(
           email: email,
           password: params.require(:password),
-          name: params[:name].presence || email.to_s.split("@").first.presence || "Friend",
+          first_name: params.require(:first_name),
+          last_name: params.require(:last_name),
+          phone_number: params.require(:phone_number),
           timezone: params[:timezone]
         ).call
         tokens = Auth::TokenIssuer.new(user, request: request).issue_pair!
         render_success({ user: user.as_api_json }.merge(tokens), status: :created)
+      rescue ActionController::ParameterMissing => e
+        render_error(code: "parameter_missing", message: e.message, status: :bad_request)
       rescue ActiveRecord::RecordInvalid => e
         render_error(code: "signup_failed", message: e.record.errors.full_messages.to_sentence,
                      status: :unprocessable_entity, fields: e.record.errors.to_hash)

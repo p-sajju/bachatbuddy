@@ -11,7 +11,7 @@ import type { User } from "@/lib/types";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [salary, setSalary] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,10 @@ export default function OnboardingPage() {
           router.replace("/home");
           return;
         }
-        if (res.data.name) setName(res.data.name);
+        const full =
+          res.data.name ||
+          [res.data.first_name, res.data.last_name].filter(Boolean).join(" ");
+        if (full) setDisplayName(full);
       })
       .catch(() => undefined);
   }, [router]);
@@ -36,10 +39,6 @@ export default function OnboardingPage() {
     e.preventDefault();
     setError("");
     const amountPaise = parseRupeesInput(salary);
-    if (!name.trim()) {
-      setError("Please enter your name.");
-      return;
-    }
     if (amountPaise === null || amountPaise <= 0) {
       setError("Enter a valid first salary amount.");
       return;
@@ -47,7 +46,6 @@ export default function OnboardingPage() {
     setLoading(true);
     try {
       await apiPatch<User>("/api/v1/me", {
-        name: name.trim(),
         onboarding_completed: true,
         first_income: {
           amount_paise: amountPaise,
@@ -78,18 +76,12 @@ export default function OnboardingPage() {
           Let&apos;s set your baseline
         </h1>
         <p className="mt-1 mb-4 text-sm text-[var(--bb-muted)]">
-          A name and your first salary help BachatBuddy calculate Safe to Spend.
+          {displayName
+            ? `Welcome, ${displayName}. Add your first salary so BachatBuddy can calculate Safe to Spend.`
+            : "Add your first salary so BachatBuddy can calculate Safe to Spend."}
         </p>
         <ErrorBanner message={error} />
         <form onSubmit={onSubmit} className="space-y-4">
-          <Field label="Your name">
-            <Input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Priya"
-            />
-          </Field>
           <Field
             label="First salary (₹)"
             hint="Enter rupees — we’ll store it as paise securely."
@@ -100,6 +92,7 @@ export default function OnboardingPage() {
               value={salary}
               onChange={(e) => setSalary(e.target.value)}
               placeholder="50,000"
+              autoFocus
             />
           </Field>
           <Button type="submit" className="w-full" loading={loading}>
